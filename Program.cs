@@ -43,6 +43,31 @@ var app = builder.Build();
 
 app.UseAuthentication();
 
+app.Use((ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/login"))
+    {
+        return next();
+    }
+
+    if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
+    {
+        ctx.Response.StatusCode = 401;
+        return Task.CompletedTask;
+
+    }
+
+    if (!ctx.User.HasClaim("passport_type", "eu"))
+    {
+        ctx.Response.StatusCode= 403;
+
+        return Task.CompletedTask;
+    }
+
+    return next();
+
+});
+
 app.MapGet("/user", (HttpContext ctx) =>
 {
 
@@ -52,19 +77,19 @@ app.MapGet("/user", (HttpContext ctx) =>
 
 app.MapGet("/sweden", (HttpContext ctx) =>
 {
-    if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
-    {
-        ctx.Response.StatusCode = 401;
-        return "";
+    // if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
+    // {
+    //     ctx.Response.StatusCode = 401;
+    //     return "";
 
-    }
+    // }
 
-    if (!ctx.User.HasClaim("passport_type", "eu"))
-    {
-        ctx.Response.StatusCode= 403;
+    // if (!ctx.User.HasClaim("passport_type", "eu"))
+    // {
+    //     ctx.Response.StatusCode= 403;
 
-        return "not allowed";
-    }
+    //     return "not allowed";
+    // }
 
     return "allowed";
 
@@ -72,24 +97,26 @@ app.MapGet("/sweden", (HttpContext ctx) =>
 
 app.MapGet("/norway", (HttpContext ctx) =>
 {
-    if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
-    {
-        ctx.Response.StatusCode = 401;
-        return "";
+    // if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
+    // {
+    //     ctx.Response.StatusCode = 401;
+    //     return "";
 
-    }
+    // }
 
-    if (!ctx.User.HasClaim("passport_type", "NOR"))
-    {
-        ctx.Response.StatusCode= 403;
+    // if (!ctx.User.HasClaim("passport_type", "NOR"))
+    // {
+    //     ctx.Response.StatusCode= 403;
 
-        return "not allowed";
-    }
+    //     return "not allowed";
+    // }
 
     return "allowed";
 
 });
 
+
+// [AuthScheme(AuthScheme2)]
 app.MapGet("/denmark", (HttpContext ctx) =>
 {
     if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme2))
