@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 
@@ -15,6 +16,17 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddAuthentication(AuthScheme).AddCookie(AuthScheme).AddCookie(AuthScheme2);
+
+builder.Services.AddAuthorization(builder =>
+{
+    builder.AddPolicy("eu passport", pb =>
+    {
+        pb.RequireAuthenticatedUser()
+            .AddAuthenticationSchemes(AuthScheme)
+            .AddRequirements()
+            .RequireClaim("passport_type", "eurr");
+    });
+});
 
 var app = builder.Build();
 
@@ -42,32 +54,34 @@ var app = builder.Build();
 // });
 
 app.UseAuthentication();
+app.UseAuthorization();
 
-app.Use((ctx, next) =>
-{
-    if (ctx.Request.Path.StartsWithSegments("/login"))
-    {
-        return next();
-    }
+// app.Use((ctx, next) =>
+// {
+//     if (ctx.Request.Path.StartsWithSegments("/login"))
+//     {
+//         return next();
+//     }
 
-    if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
-    {
-        ctx.Response.StatusCode = 401;
-        return Task.CompletedTask;
+//     if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
+//     {
+//         ctx.Response.StatusCode = 401;
+//         return Task.CompletedTask;
 
-    }
+//     }
 
-    if (!ctx.User.HasClaim("passport_type", "eu"))
-    {
-        ctx.Response.StatusCode= 403;
+//     if (!ctx.User.HasClaim("passport_type", "eu"))
+//     {
+//         ctx.Response.StatusCode= 403;
 
-        return Task.CompletedTask;
-    }
+//         return Task.CompletedTask;
+//     }
 
-    return next();
+//     return next();
 
-});
+// });
 
+// mvc style [Authorize(Policy = "eu passport")]
 app.MapGet("/user", (HttpContext ctx) =>
 {
 
@@ -93,7 +107,7 @@ app.MapGet("/sweden", (HttpContext ctx) =>
 
     return "allowed";
 
-});
+}).RequireAuthorization("eu passport");
 
 app.MapGet("/norway", (HttpContext ctx) =>
 {
@@ -147,7 +161,7 @@ app.MapGet("/login", async (HttpContext ctx) =>
     var identity = new ClaimsIdentity(claims, AuthScheme);
     var user = new ClaimsPrincipal(identity);
     await ctx.SignInAsync(AuthScheme, user);
-});
+}).AllowAnonymous();
 
 app.Run();
 
@@ -168,3 +182,25 @@ app.Run();
 //         _accessor.HttpContext.Response.Headers["set-cookie"] = $"auth={protector.Protect("usr:me")}";
 //     }
 // }
+
+
+public class MyRequirement : IAuthorizationRequirement
+{
+
+}
+
+public class MyRequirementHandler : AuthorizationHandler<MyRequirement>
+{
+    public MyRequirementHandler()
+    {
+
+    }
+
+    protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, MyRequirement requirement)
+    {
+
+        // context.User
+        //context.Succeed(new MyRequirement());
+        return Task.CompletedTask;
+    }
+}
