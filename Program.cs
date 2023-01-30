@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 
+const string AuthScheme = "cookie";
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -10,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddHttpContextAccessor();
 //builder.Services.AddScoped<AuthService>();
 
-builder.Services.AddAuthentication("cookie").AddCookie("cookie");
+builder.Services.AddAuthentication(AuthScheme).AddCookie(AuthScheme);
 
 var app = builder.Build();
 
@@ -39,14 +41,14 @@ var app = builder.Build();
 
 app.UseAuthentication();
 
-app.MapGet("/user", (HttpContext ctx, IDataProtectionProvider idp) =>
+app.MapGet("/user", (HttpContext ctx) =>
 {
 
-    return ctx.User.FindFirst("usr");
+    return ctx.User.FindFirst("usr")?.Value ?? "empty";
 
 });
 
-app.MapGet("/login", (HttpContext ctx) =>
+app.MapGet("/login", async (HttpContext ctx) =>
 {
     //auth.SignIn();
 
@@ -54,8 +56,7 @@ app.MapGet("/login", (HttpContext ctx) =>
     claims.Add(new Claim("usr", "me"));
     var identity = new ClaimsIdentity(claims, "cookie");
     ctx.User = new ClaimsPrincipal(identity);
-    await ctx.SignInAsync("cookie", user);
-    return "ok";
+    await ctx.SignInAsync(AuthScheme, user);
 });
 
 app.Run();
