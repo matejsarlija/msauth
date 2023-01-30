@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 
 const string AuthScheme = "cookie";
+const string AuthScheme2 = "cookie2";
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddHttpContextAccessor();
 //builder.Services.AddScoped<AuthService>();
 
-builder.Services.AddAuthentication(AuthScheme).AddCookie(AuthScheme);
+builder.Services.AddAuthentication(AuthScheme).AddCookie(AuthScheme).AddCookie(AuthScheme2);
 
 var app = builder.Build();
 
@@ -48,14 +50,75 @@ app.MapGet("/user", (HttpContext ctx) =>
 
 });
 
+app.MapGet("/sweden", (HttpContext ctx) =>
+{
+    if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
+    {
+        ctx.Response.StatusCode = 401;
+        return "";
+
+    }
+
+    if (!ctx.User.HasClaim("passport_type", "eu"))
+    {
+        ctx.Response.StatusCode= 403;
+
+        return "not allowed";
+    }
+
+    return "allowed";
+
+});
+
+app.MapGet("/norway", (HttpContext ctx) =>
+{
+    if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme))
+    {
+        ctx.Response.StatusCode = 401;
+        return "";
+
+    }
+
+    if (!ctx.User.HasClaim("passport_type", "NOR"))
+    {
+        ctx.Response.StatusCode= 403;
+
+        return "not allowed";
+    }
+
+    return "allowed";
+
+});
+
+app.MapGet("/denmark", (HttpContext ctx) =>
+{
+    if (!ctx.User.Identities.Any(x => x.AuthenticationType == AuthScheme2))
+    {
+        ctx.Response.StatusCode = 401;
+        return "";
+
+    }
+
+    if (!ctx.User.HasClaim("passport_type", "eu"))
+    {
+        ctx.Response.StatusCode= 403;
+
+        return "not allowed";
+    }
+
+    return "allowed";
+
+});
+
 app.MapGet("/login", async (HttpContext ctx) =>
 {
     //auth.SignIn();
 
     var claims = new List<Claim>();
     claims.Add(new Claim("usr", "me"));
-    var identity = new ClaimsIdentity(claims, "cookie");
-    ctx.User = new ClaimsPrincipal(identity);
+    claims.Add(new Claim("passport_type", "eu"));
+    var identity = new ClaimsIdentity(claims, AuthScheme);
+    var user = new ClaimsPrincipal(identity);
     await ctx.SignInAsync(AuthScheme, user);
 });
 
