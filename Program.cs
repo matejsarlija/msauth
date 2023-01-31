@@ -9,23 +9,30 @@ using System.Text.Encodings.Web;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAuthentication()
-    .AddCookie("visitor")
+    .AddScheme<CookieAuthenticationOptions, VisitorAuthHandler>("visitor", o => {})
     .AddCookie("local");
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(b =>
+{
+    b.AddPolicy("customer", p =>
+    {
+        p.AddAuthenticationSchemes("local", "visitor")
+            .RequireAuthenticatedUser();
+    });
+});
 
 var app = builder.Build();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", ctx => Task.FromResult("Hello World!"));
+app.MapGet("/", ctx => Task.FromResult("Hello World!")).RequireAuthorization("customer");
 
-app.MapGet("/login", async (HttpContext ctx) =>
+app.MapGet("/login-local", async (HttpContext ctx) =>
 {
     var claims = new List<Claim>();
     claims.Add(new Claim("usr", "me"));
-    var identity = new ClaimsIdentity(claims, "cookie");
+    var identity = new ClaimsIdentity(claims, "local");
     var user = new ClaimsPrincipal(identity);
 
     await ctx.SignInAsync("local", user);
@@ -52,5 +59,14 @@ public class VisitorAuthHandler : CookieAuthenticationHandler
         {
             return result;
         }
+
+        var claims = new List<Claim>();
+        claims.Add(new Claim("usr", "me"));
+        var identity = new ClaimsIdentity(claims, "visitor");
+        var user = new ClaimsPrincipal(identity);
+
+        await Context.SignInAsync("visitor", user);
+
+        return AuthenticateResult.Success(new AuthenticationTicket(user, "visitor"));
     }
 }
