@@ -1,11 +1,16 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using System.Text.Encodings.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddAuthentication().AddCookie("local");
+builder.Services.AddAuthentication()
+    .AddCookie("visitor")
+    .AddCookie("local");
 
 builder.Services.AddAuthorization();
 
@@ -29,42 +34,23 @@ app.MapGet("/login", async (HttpContext ctx) =>
 
 app.Run();
 
-// public class AuthService
-// {
-//     private readonly IDataProtectionProvider _idp;
-//     private readonly IHttpContextAccessor _accessor;
-
-//     public AuthService(IDataProtectionProvider idp, IHttpContextAccessor accessor)
-//     {
-//         _idp = idp;
-//         _accessor = accessor;
-//     }
-
-//     public void SignIn()
-//     {
-//         var protector = _idp.CreateProtector("auth-cookie");
-//         _accessor.HttpContext.Response.Headers["set-cookie"] = $"auth={protector.Protect("usr:me")}";
-//     }
-// }
-
-
-public class MyRequirement : IAuthorizationRequirement
+public class VisitorAuthHandler : CookieAuthenticationHandler
 {
-
-}
-
-public class MyRequirementHandler : AuthorizationHandler<MyRequirement>
-{
-    public MyRequirementHandler()
+    public VisitorAuthHandler(
+        IOptionsMonitor<CookieAuthenticationOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder,
+        ISystemClock clock) : base(options, logger, encoder, clock)
     {
-
     }
 
-    protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, MyRequirement requirement)
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        var result = await base.HandleAuthenticateAsync();
 
-        // context.User
-        //context.Succeed(new MyRequirement());
-        return Task.CompletedTask;
+        if (result.Succeeded)
+        {
+            return result;
+        }
     }
 }
